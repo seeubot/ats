@@ -148,12 +148,28 @@ async def _animated_progress(msg, steps: list[str], delay: float = 1.2):
         spinner = spinners[i % len(spinners)]
         try:
             await msg.edit_text(
-                f"{spinner} *{step}*\n\n_Please wait…_",
+                f"{spinner} *{_escape_markdown(step)}*\n\n_Please wait…_",
                 parse_mode="MarkdownV2",
             )
         except Exception:
             pass
         await asyncio.sleep(delay)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Error handler
+# ─────────────────────────────────────────────────────────────────────────────
+
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
+    logger.error("Exception while handling update:", exc_info=context.error)
+    if isinstance(update, Update) and update.effective_message:
+        try:
+            await update.effective_message.reply_text(
+                "⚠️ Something went wrong\\. Please try again or use /cancel to reset\\.",
+                parse_mode="MarkdownV2",
+            )
+        except Exception:
+            pass
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -192,7 +208,7 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if cmd == "menu_tailor":
         await query.message.reply_text(
             "📄 *Step 1 of 2 — Upload Your Resume*\n\n"
-            "Send your resume as a *PDF* or *DOCX* file.",
+            "Send your resume as a *PDF* or *DOCX* file\\.",
             parse_mode="MarkdownV2",
         )
         context.user_data.clear()
@@ -200,7 +216,7 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif cmd == "menu_scan":
         await query.message.reply_text(
-            r"📊 *Quick ATS Scan*\n\nSend me your resume \(PDF or DOCX\) and I'll give you an instant health report\.",
+            "📊 *Quick ATS Scan*\n\nSend me your resume \\(PDF or DOCX\\) and I'll give you an instant health report\\.",
             parse_mode="MarkdownV2",
         )
         context.user_data.clear()
@@ -208,7 +224,7 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif cmd == "menu_keywords":
         await query.message.reply_text(
-            r"🔑 *Keyword Extractor*\n\nPaste the job description as a text message and I'll pull out the top ATS keywords\.",
+            "🔑 *Keyword Extractor*\n\nPaste the job description as a text message and I'll pull out the top ATS keywords\\.",
             parse_mode="MarkdownV2",
         )
         context.user_data.clear()
@@ -228,7 +244,7 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     await update.message.reply_text(
-        r"❌ Cancelled\. Type /tailor, /scan, /keywords, or /tips to start\.",
+        "❌ Cancelled\\. Type /tailor, /scan, /keywords, or /tips to start\\.",
         parse_mode="MarkdownV2",
     )
     return ConversationHandler.END
@@ -242,8 +258,8 @@ async def tailor_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     await update.message.reply_text(
         "📄 *Step 1 of 2 — Upload Your Resume*\n\n"
-        "Send me your resume as a *PDF* or *DOCX* file.\n\n"
-        "_/cancel to stop at any time._",
+        "Send me your resume as a *PDF* or *DOCX* file\\.\n\n"
+        "_/cancel to stop at any time\\._",
         parse_mode="MarkdownV2",
     )
     return WAITING_RESUME
@@ -253,7 +269,7 @@ async def receive_resume(update: Update, context: ContextTypes.DEFAULT_TYPE):
     doc = update.message.document
     if not doc:
         await update.message.reply_text(
-            "⚠️ Please send a *file* (PDF or DOCX), not text or an image.",
+            "⚠️ Please send a *file* \\(PDF or DOCX\\), not text or an image\\.",
             parse_mode="MarkdownV2",
         )
         return WAITING_RESUME
@@ -261,13 +277,14 @@ async def receive_resume(update: Update, context: ContextTypes.DEFAULT_TYPE):
     fname = doc.file_name or ""
     if not (fname.lower().endswith(".pdf") or fname.lower().endswith(".docx")):
         await update.message.reply_text(
-            "⚠️ Only *PDF* and *DOCX* are supported. Please try again.",
+            "⚠️ Only *PDF* and *DOCX* are supported\\. Please try again\\.",
             parse_mode="MarkdownV2",
         )
         return WAITING_RESUME
 
     status_msg = await update.message.reply_text(
-        "⬇️ Downloading resume… running ATS health check, please wait."
+        "⬇️ Downloading resume… running ATS health check, please wait\\.",
+        parse_mode="MarkdownV2",
     )
 
     tg_file = await doc.get_file()
@@ -281,7 +298,7 @@ async def receive_resume(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ── Instant ATS health check ──────────────────────────────────────────────
     try:
         await status_msg.edit_text(
-            "🔍 *Scanning your resume…* (AI in progress)",
+            "🔍 *Scanning your resume…* \\(AI in progress\\)",
             parse_mode="MarkdownV2",
         )
         processor = ResumeProcessor()
@@ -292,9 +309,9 @@ async def receive_resume(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logger.warning("quick_scan failed: %s", e)
         await status_msg.edit_text(
-            "✅ *Resume received!*\n\n"
+            "✅ *Resume received\\!*\n\n"
             "📋 *Step 2 — Paste the Job Description*\n\n"
-            "Copy and paste the full JD as a text message.",
+            "Copy and paste the full JD as a text message\\.",
             parse_mode="MarkdownV2",
         )
 
@@ -305,7 +322,8 @@ async def receive_jd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     jd_text = (update.message.text or "").strip()
     if len(jd_text) < 50:
         await update.message.reply_text(
-            "⚠️ The job description seems too short. Please paste the full JD (at least a few sentences)."
+            "⚠️ The job description seems too short\\. Please paste the full JD \\(at least a few sentences\\)\\.",
+            parse_mode="MarkdownV2",
         )
         return WAITING_JD
 
@@ -324,7 +342,7 @@ async def receive_jd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     preview_text = jd_text[:250] + ("…" if len(jd_text) > 250 else "")
     await update.message.reply_text(
-        f"📋 *JD received\!*\n\n_{_escape_markdown(preview_text)}_\n\n"
+        f"📋 *JD received\\!*\n\n_{_escape_markdown(preview_text)}_\n\n"
         f"*🔑 Top keywords detected:*\n{kw_preview}\n\n"
         "Ready to tailor your resume around these keywords?",
         parse_mode="MarkdownV2",
@@ -338,7 +356,7 @@ async def confirm_tailor(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     if query.data == "cancel_tailor":
-        await query.edit_message_text("❌ Cancelled. Type /tailor to start again.")
+        await query.edit_message_text("❌ Cancelled\\. Type /tailor to start again\\.", parse_mode="MarkdownV2")
         context.user_data.clear()
         return ConversationHandler.END
 
@@ -374,15 +392,15 @@ async def confirm_tailor(update: Update, context: ContextTypes.DEFAULT_TYPE):
         e_after,  l_after  = _score_badge(score_after)
 
         score_report = (
-            f"✅ *Resume Tailored Successfully\!*\n\n"
+            f"✅ *Resume Tailored Successfully\\!*\n\n"
             f"📊 *ATS Score Comparison*\n"
             f"{'─' * 30}\n"
             f"Before  {e_before} {_score_bar(score_before)}  _{l_before}_\n"
             f"After   {e_after}  {_score_bar(score_after)}  _{l_after}_\n"
-            f"Gain    🎉 `+{gain}%` improvement\n\n"
+            f"Gain    🎉 `\\+{gain}%` improvement\n\n"
             f"🔑 *Keywords injected:*\n{_fmt_keywords(result['keywords_added'])}\n\n"
-            f"💡 *Changes made:*\n_{result['summary_of_changes']}_\n\n"
-            f"📥 Your tailored resume is below — good luck\! 🍀"
+            f"💡 *Changes made:*\n_{_escape_markdown(result['summary_of_changes'])}_\n\n"
+            f"📥 Your tailored resume is below — good luck\\! 🍀"
         )
 
         await prog_msg.edit_text(score_report, parse_mode="MarkdownV2")
@@ -397,7 +415,7 @@ async def confirm_tailor(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_document(
             document=io.BytesIO(result["docx_bytes"]),
             filename=out_filename,
-            caption="📄 ATS-optimised resume attached.",
+            caption="📄 ATS-optimised resume attached\\.",
             reply_markup=InlineKeyboardMarkup(keyboard),
         )
 
@@ -405,7 +423,7 @@ async def confirm_tailor(update: Update, context: ContextTypes.DEFAULT_TYPE):
         progress_task.cancel()
         logger.error("Processing error: %s", e, exc_info=True)
         await prog_msg.edit_text(
-            f"❌ *Processing failed\.*\n\n`{str(e)[:300]}`\n\nType /tailor to try again\.",
+            f"❌ *Processing failed\\.*\n\n`{_escape_markdown(str(e)[:300])}`\n\nType /tailor to try again\\.",
             parse_mode="MarkdownV2",
         )
 
@@ -419,19 +437,16 @@ async def post_tailor_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     await query.answer()
 
     if query.data == "restart_tailor":
-        # Keep the resume bytes from previous session if still available
         if context.user_data.get("resume_bytes"):
             await query.message.reply_text(
-                "📋 *Paste the new Job Description* and I'll tailor the same resume for it.",
+                "📋 *Paste the new Job Description* and I'll tailor the same resume for it\\.",
                 parse_mode="MarkdownV2",
             )
-            # Re-enter conversation at JD step
             context.user_data.pop("jd_text", None)
-            # Since we're outside the conv handler we guide the user manually;
-            # they'll send a message which the conv fallback catches
         else:
             await query.message.reply_text(
-                "Please start fresh with /tailor — the previous resume session has expired.",
+                "Please start fresh with /tailor — the previous resume session has expired\\.",
+                parse_mode="MarkdownV2",
             )
 
     elif query.data == "show_history":
@@ -445,10 +460,10 @@ async def post_tailor_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 async def scan_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     await update.message.reply_text(
-        r"📊 *Quick ATS Scan*\n\n"
-        r"Send me your resume \(PDF or DOCX\) and I'll give you a detailed health report — "
-        r"no job description needed\.\n\n"
-        r"_/cancel to stop\._",
+        "📊 *Quick ATS Scan*\n\n"
+        "Send me your resume \\(PDF or DOCX\\) and I'll give you a detailed health report — "
+        "no job description needed\\.\n\n"
+        "_/cancel to stop\\._",
         parse_mode="MarkdownV2",
     )
     return SCAN_WAITING_RESUME
@@ -457,12 +472,18 @@ async def scan_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def scan_receive_resume(update: Update, context: ContextTypes.DEFAULT_TYPE):
     doc = update.message.document
     if not doc:
-        await update.message.reply_text("⚠️ Please send a PDF or DOCX file.")
+        await update.message.reply_text(
+            "⚠️ Please send a PDF or DOCX file\\.",
+            parse_mode="MarkdownV2",
+        )
         return SCAN_WAITING_RESUME
 
     fname = doc.file_name or ""
     if not (fname.lower().endswith(".pdf") or fname.lower().endswith(".docx")):
-        await update.message.reply_text("⚠️ Only PDF and DOCX supported.")
+        await update.message.reply_text(
+            "⚠️ Only PDF and DOCX supported\\.",
+            parse_mode="MarkdownV2",
+        )
         return SCAN_WAITING_RESUME
 
     status_msg = await update.message.reply_text("🔍 *Scanning your resume…*", parse_mode="MarkdownV2")
@@ -479,7 +500,7 @@ async def scan_receive_resume(update: Update, context: ContextTypes.DEFAULT_TYPE
     except Exception as e:
         logger.error("Scan error: %s", e, exc_info=True)
         await status_msg.edit_text(
-            f"❌ Could not scan resume: `{str(e)[:200]}`",
+            f"❌ Could not scan resume: `{_escape_markdown(str(e)[:200])}`",
             parse_mode="MarkdownV2",
         )
 
@@ -494,7 +515,7 @@ def _build_scan_report(fname: str, scan: dict, footer: str = "tailor") -> str:
     emoji, label = _score_badge(score)
 
     section_lines = "\n".join(
-        f"  {'✅' if v else '❌'} {k.replace('_', ' ').title()}"
+        f"  {'✅' if v else '❌'} {_escape_markdown(k.replace('_', ' ').title())}"
         for k, v in flags.items()
     )
     strengths = "\n".join(f"  ✦ {_escape_markdown(s)}" for s in scan.get("strengths", [])[:3]) or "  ✦ None detected"
@@ -502,9 +523,9 @@ def _build_scan_report(fname: str, scan: dict, footer: str = "tailor") -> str:
     tips      = "\n".join(f"  ✦ {_escape_markdown(t)}" for t in scan.get("formatting_tips", [])[:3]) or "  ✦ None"
 
     footer_line = (
-        "\n📋 *Now paste the Job Description below* to tailor your resume for a specific role\!"
+        "\n📋 *Now paste the Job Description below* to tailor your resume for a specific role\\!"
         if footer == "tailor"
-        else "\n💡 Run /tailor to optimise this resume for a specific job, or /tips for writing advice."
+        else "\n💡 Run /tailor to optimise this resume for a specific job, or /tips for writing advice\\."
     )
 
     return (
@@ -530,10 +551,10 @@ def _build_scan_report(fname: str, scan: dict, footer: str = "tailor") -> str:
 async def keywords_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     await update.message.reply_text(
-        r"🔑 *Keyword Extractor*\n\n"
-        r"Paste the full job description as a text message and I'll extract "
-        r"the top ATS keywords you should include in your resume\.\n\n"
-        r"_/cancel to stop\._",
+        "🔑 *Keyword Extractor*\n\n"
+        "Paste the full job description as a text message and I'll extract "
+        "the top ATS keywords you should include in your resume\\.\n\n"
+        "_/cancel to stop\\._",
         parse_mode="MarkdownV2",
     )
     return KW_WAITING_JD
@@ -542,7 +563,10 @@ async def keywords_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def keywords_receive_jd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     jd_text = (update.message.text or "").strip()
     if len(jd_text) < 40:
-        await update.message.reply_text("⚠️ Paste the full job description (more text needed).")
+        await update.message.reply_text(
+            "⚠️ Paste the full job description \\(more text needed\\)\\.",
+            parse_mode="MarkdownV2",
+        )
         return KW_WAITING_JD
 
     status_msg = await update.message.reply_text("🔍 Extracting keywords…")
@@ -553,26 +577,26 @@ async def keywords_receive_jd(update: Update, context: ContextTypes.DEFAULT_TYPE
         # Get AI-enriched keyword breakdown
         kw_data = await processor.extract_keywords_with_ai(jd_text)
 
-        must_have   = kw_data.get("must_have", [])
-        nice_to_have= kw_data.get("nice_to_have", [])
-        skills      = kw_data.get("skills", [])
-        soft_skills = kw_data.get("soft_skills", [])
-        job_title   = kw_data.get("job_title", "")
-        seniority   = kw_data.get("seniority", "")
+        must_have    = kw_data.get("must_have", [])
+        nice_to_have = kw_data.get("nice_to_have", [])
+        skills       = kw_data.get("skills", [])
+        soft_skills  = kw_data.get("soft_skills", [])
+        job_title    = kw_data.get("job_title", "")
+        seniority    = kw_data.get("seniority", "")
 
         def fmt_list(items, limit=10):
-            return "\n".join(f"  • `{i}`" for i in items[:limit]) or "  • None"
+            return "\n".join(f"  • `{_escape_markdown(i)}`" for i in items[:limit]) or "  • None"
 
         report = (
             f"🔑 *Keyword Analysis*\n"
             f"{'─' * 32}\n\n"
         )
         if job_title:
-            report += f"*Role:* {job_title}   |   *Level:* {seniority}\n\n"
+            report += f"*Role:* {_escape_markdown(job_title)}   |   *Level:* {_escape_markdown(seniority)}\n\n"
 
         report += (
-            f"*🔴 Must-Have Keywords:*\n{fmt_list(must_have)}\n\n"
-            f"*🟡 Nice-to-Have:*\n{fmt_list(nice_to_have)}\n\n"
+            f"*🔴 Must\\-Have Keywords:*\n{fmt_list(must_have)}\n\n"
+            f"*🟡 Nice\\-to\\-Have:*\n{fmt_list(nice_to_have)}\n\n"
             f"*🛠 Technical Skills:*\n{fmt_list(skills)}\n\n"
             f"*🤝 Soft Skills:*\n{fmt_list(soft_skills)}\n\n"
             f"{'─' * 32}\n"
@@ -586,10 +610,10 @@ async def keywords_receive_jd(update: Update, context: ContextTypes.DEFAULT_TYPE
         # Fallback to basic extraction
         processor = ResumeProcessor()
         top_kw = processor._extract_keywords(jd_text)[:20]
-        basic = "\n".join(f"  • `{k}`" for k in top_kw)
+        basic = "\n".join(f"  • `{_escape_markdown(k)}`" for k in top_kw)
         await status_msg.edit_text(
             f"🔑 *Top Keywords from JD:*\n\n{basic}\n\n"
-            "_Use /tailor to inject these into your resume._",
+            "_Use /tailor to inject these into your resume\\._",
             parse_mode="MarkdownV2",
         )
 
@@ -604,22 +628,22 @@ ROLE_TIPS = {
     "software": {
         "title": "Software Engineering",
         "tips": [
-            "Lead bullets with the tech stack: *'Built X using Python/Django/PostgreSQL…'*",
+            r"Lead bullets with the tech stack: _'Built X using Python/Django/PostgreSQL…'_",
             "Quantify scale: users served, requests/sec, latency reduction, uptime %",
-            "List GitHub, portfolio, or notable open-source contributions",
-            "Include a dedicated *Technologies* section: languages, frameworks, cloud, tools",
-            "ATS parses skills separately — list both abbreviations and full names (e.g. 'ML / Machine Learning')",
-            "Show progression: Junior → Mid → Senior (title changes or scope growth)",
-            "Include system design wins: 'Designed microservices reducing infra cost by 30%'",
+            "List GitHub, portfolio, or notable open\\-source contributions",
+            "Include a dedicated _Technologies_ section: languages, frameworks, cloud, tools",
+            "ATS parses skills separately — list both abbreviations and full names \\(e\\.g\\. 'ML / Machine Learning'\\)",
+            "Show progression: Junior → Mid → Senior \\(title changes or scope growth\\)",
+            "Include system design wins: _'Designed microservices reducing infra cost by 30%'_",
         ],
     },
     "data": {
         "title": "Data Science / Analytics",
         "tips": [
-            "Name your ML models and datasets: *'XGBoost model predicting churn (AUC 0.91)'*",
+            r"Name your ML models and datasets: _'XGBoost model predicting churn \(AUC 0\.91\)'_",
             "Quantify business impact: revenue uplift, cost savings, decision accuracy",
             "List tools explicitly: Python, R, SQL, Spark, Tableau, PowerBI, dbt, Airflow",
-            "Mention model deployment if applicable (MLflow, SageMaker, Docker)",
+            "Mention model deployment if applicable \\(MLflow, SageMaker, Docker\\)",
             "Include your Kaggle rank, published papers, or data blog if relevant",
             "Separate 'Modelling' skills from 'Engineering' skills — recruiters scan for both",
         ],
@@ -627,9 +651,9 @@ ROLE_TIPS = {
     "product": {
         "title": "Product Management",
         "tips": [
-            "Frame every bullet as *Outcome → Impact*: 'Launched X → increased retention by Y%'",
+            r"Frame every bullet as _Outcome → Impact_: 'Launched X → increased retention by Y%'",
             "Use PM keywords: roadmap, prioritization, OKRs, KPIs, GTM, A/B testing",
-            "Show cross-functional leadership: 'Led 12-person squad across Eng, Design, Data'",
+            "Show cross\\-functional leadership: _'Led 12\\-person squad across Eng, Design, Data'_",
             "Include metrics on features you shipped: DAU, conversion, NPS, revenue",
             "Avoid jargon like 'passionate about' — ATS and humans both dislike it",
             "Certifications to mention: PSPO, CPO, Google PM Certificate",
@@ -638,19 +662,19 @@ ROLE_TIPS = {
     "marketing": {
         "title": "Marketing",
         "tips": [
-            "Lead every bullet with a metric: 'Grew organic traffic 120% in 6 months'",
+            "Lead every bullet with a metric: _'Grew organic traffic 120% in 6 months'_",
             "List channels explicitly: SEO, SEM, email, social, content, paid, influencer",
             "Show funnel ownership: awareness → acquisition → activation → retention",
             "Name your tools: HubSpot, Marketo, Salesforce, GA4, Semrush, Klaviyo",
             "Include campaign ROI and ROAS figures wherever possible",
-            "Content marketers: link your portfolio or top-performing article",
+            "Content marketers: link your portfolio or top\\-performing article",
         ],
     },
     "finance": {
         "title": "Finance / Accounting",
         "tips": [
             "Lead with certifications front and centre: CPA, CFA, CMA, ACCA",
-            "Use exact figures: '$4.2M budget managed', 'Reduced DSO by 18 days'",
+            "Use exact figures: _'\\$4\\.2M budget managed'_, _'Reduced DSO by 18 days'_",
             "ATS keywords: financial modelling, variance analysis, GAAP, IFRS, consolidation",
             "List systems: SAP, Oracle, QuickBooks, Hyperion, Adaptive Insights",
             "Show audit/compliance experience explicitly — recruiters filter on it",
@@ -662,33 +686,33 @@ ROLE_TIPS = {
         "tips": [
             "Always include a portfolio link — it often matters more than the resume",
             "List tools: Figma, Sketch, Adobe XD, Illustrator, Photoshop, InVision",
-            "Describe your design *process*, not just outputs: research → wireframe → test → ship",
-            "Quantify UX impact: 'Redesigned checkout flow → 22% drop in cart abandonment'",
+            "Describe your design _process_, not just outputs: research → wireframe → test → ship",
+            "Quantify UX impact: _'Redesigned checkout flow → 22% drop in cart abandonment'_",
             "Include user research methods you use: interviews, usability tests, card sorting",
-            "ATS-friendly format: avoid submitting resumes with heavy graphics/tables",
+            "ATS\\-friendly format: avoid submitting resumes with heavy graphics/tables",
         ],
     },
     "sales": {
         "title": "Sales",
         "tips": [
-            "Lead with quota attainment: *'Achieved 127% of $1.8M annual quota'*",
+            r"Lead with quota attainment: _'Achieved 127% of \$1\.8M annual quota'_",
             "Include deal size, sales cycle length, and territory/vertical owned",
             "Mention your CRM: Salesforce, HubSpot, Outreach, Gong",
             "Use sales keywords: pipeline, ARR, MRR, SDR, AE, enterprise, SMB, outbound",
-            "Show progression: SDR → AE → Sr. AE → Manager",
-            "Awards and rankings: President's Club, Top Performer Q3 2023, etc.",
+            "Show progression: SDR → AE → Sr\\. AE → Manager",
+            "Awards and rankings: President's Club, Top Performer Q3 2023, etc\\.",
         ],
     },
     "general": {
         "title": "General / Other",
         "tips": [
-            "Use a clean single-column layout — multi-column resumes confuse ATS parsers",
+            "Use a clean single\\-column layout — multi\\-column resumes confuse ATS parsers",
             "Start every bullet with a strong action verb: Led, Built, Delivered, Reduced…",
-            "Include numbers in at least 60% of your bullets — they're the most ATS-friendly signal",
-            "Keep resume to 1 page (0–5 yrs experience) or 2 pages (5+ yrs)",
+            "Include numbers in at least 60% of your bullets — they're the most ATS\\-friendly signal",
+            "Keep resume to 1 page \\(0–5 yrs experience\\) or 2 pages \\(5\\+ yrs\\)",
             "Tailor your summary for each role — make it sound like you wrote it for them",
-            "Save as .docx or .pdf — avoid Google Docs links or image-only PDFs",
-            "Include both the acronym and full form: 'AWS (Amazon Web Services)'",
+            "Save as \\.docx or \\.pdf — avoid Google Docs links or image\\-only PDFs",
+            "Include both the acronym and full form: _'AWS \\(Amazon Web Services\\)'_",
         ],
     },
 }
@@ -731,10 +755,11 @@ async def tips_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     role_key = query.data.replace("tips_", "")
     role_data = ROLE_TIPS.get(role_key, ROLE_TIPS["general"])
     title = role_data["title"]
-    tips_list = "\n\n".join(f"  {i+1}. {t}" for i, t in enumerate(role_data["tips"]))
+    # Tips are already escaped in ROLE_TIPS; join with numbering
+    tips_list = "\n\n".join(f"  {i+1}\\. {t}" for i, t in enumerate(role_data["tips"]))
 
     msg = (
-        f"💡 *Resume Tips — {title}*\n"
+        f"💡 *Resume Tips — {_escape_markdown(title)}*\n"
         f"{'─' * 32}\n\n"
         f"{tips_list}\n\n"
         f"{'─' * 32}\n"
@@ -756,7 +781,7 @@ async def _send_history(message, user_id: int):
     records = _history.get(user_id, [])
     if not records:
         await message.reply_text(
-            r"📈 *Your Tailoring History*\n\nNo sessions yet\. Run /tailor to get started\!",
+            "📈 *Your Tailoring History*\n\nNo sessions yet\\. Run /tailor to get started\\!",
             parse_mode="MarkdownV2",
         )
         return
@@ -766,7 +791,7 @@ async def _send_history(message, user_id: int):
         e_after, l_after = _score_badge(r["score_after"])
         lines.append(
             f"*{i}\\. {_escape_markdown(r['filename'])}*\n"
-            f"   📅 {r['ts']}\n"
+            f"   📅 {_escape_markdown(r['ts'])}\n"
             f"   Before: `{r['score_before']}%`  →  After: {e_after} `{r['score_after']}%`  \\(\\+{r['gain']}%\\)"
         )
 
@@ -777,7 +802,7 @@ async def _send_history(message, user_id: int):
         f"{'─' * 32}\n\n"
         f"{body}\n\n"
         f"{'─' * 32}\n"
-        f"🏆 Best gain: `+{best['gain']}%` on _{_escape_markdown(best['filename'])}_"
+        f"🏆 Best gain: `\\+{best['gain']}%` on _{_escape_markdown(best['filename'])}_"
     )
     await message.reply_text(msg, parse_mode="MarkdownV2")
 
@@ -792,9 +817,10 @@ async def unexpected_message(update: Update, context: ContextTypes.DEFAULT_TYPE)
         "/tailor — Tailor your resume to a job description\n"
         "/scan — Quick ATS health check\n"
         "/keywords — Extract keywords from a JD\n"
-        "/tips — Role-specific resume writing tips\n"
+        "/tips — Role\\-specific resume writing tips\n"
         "/history — Your past sessions\n"
-        "/help — Full usage guide"
+        "/help — Full usage guide",
+        parse_mode="MarkdownV2",
     )
 
 
@@ -809,9 +835,80 @@ def main():
 
     app = Application.builder().token(token).build()
 
+    # ── Error handler ─────────────────────────────────────────────────────────
+    app.add_error_handler(error_handler)
+
     # ── /tailor conversation ──────────────────────────────────────────────────
     tailor_conv = ConversationHandler(
         entry_points=[CommandHandler("tailor", tailor_start)],
         states={
             WAITING_RESUME: [MessageHandler(filters.Document.ALL, receive_resume)],
-            WAITING_JD:     [d
+            WAITING_JD:     [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_jd)],
+            PROCESSING:     [CallbackQueryHandler(confirm_tailor, pattern="^(confirm|cancel)_tailor$")],
+        },
+        fallbacks=[CommandHandler("cancel", cancel)],
+        per_message=False,
+    )
+
+    # ── /scan conversation ────────────────────────────────────────────────────
+    scan_conv = ConversationHandler(
+        entry_points=[CommandHandler("scan", scan_start)],
+        states={
+            SCAN_WAITING_RESUME: [MessageHandler(filters.Document.ALL, scan_receive_resume)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel)],
+        per_message=False,
+    )
+
+    # ── /keywords conversation ────────────────────────────────────────────────
+    keywords_conv = ConversationHandler(
+        entry_points=[CommandHandler("keywords", keywords_start)],
+        states={
+            KW_WAITING_JD: [MessageHandler(filters.TEXT & ~filters.COMMAND, keywords_receive_jd)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel)],
+        per_message=False,
+    )
+
+    # ── /tips conversation ────────────────────────────────────────────────────
+    tips_conv = ConversationHandler(
+        entry_points=[CommandHandler("tips", tips_start)],
+        states={
+            TIPS_WAITING_ROLE: [CallbackQueryHandler(tips_callback, pattern="^tips_")],
+        },
+        fallbacks=[CommandHandler("cancel", cancel)],
+        per_message=False,
+    )
+
+    app.add_handler(tailor_conv)
+    app.add_handler(scan_conv)
+    app.add_handler(keywords_conv)
+    app.add_handler(tips_conv)
+
+    app.add_handler(CommandHandler("start",   start))
+    app.add_handler(CommandHandler("help",    help_cmd))
+    app.add_handler(CommandHandler("history", history_cmd))
+
+    app.add_handler(CallbackQueryHandler(menu_callback,        pattern="^menu_"))
+    app.add_handler(CallbackQueryHandler(post_tailor_callback, pattern="^(restart_tailor|show_history)$"))
+
+    app.add_handler(MessageHandler(filters.ALL, unexpected_message))
+
+    # ── Webhook / polling ─────────────────────────────────────────────────────
+    webhook_url = os.environ.get("WEBHOOK_URL")
+    port = int(os.environ.get("PORT", 8000))
+
+    if webhook_url:
+        logger.info("Webhook mode → port %s | %s", port, webhook_url)
+        app.run_webhook(
+            listen="0.0.0.0",
+            port=port,
+            webhook_url=webhook_url,
+        )
+    else:
+        logger.info("Polling mode")
+        app.run_polling()
+
+
+if __name__ == "__main__":
+    main()
