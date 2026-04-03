@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 # ─── Groq free-tier endpoint ──────────────────────────────────────────────────
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL = "llama3-70b-8192"          # free, fast, great quality
+GROQ_MODEL = "llama-3.3-70b-versatile"  # current free model (replaces deprecated llama3-70b-8192)
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 
 
@@ -230,6 +230,10 @@ class ResumeProcessor:
                     "max_tokens": 4096,
                 },
             )
+            if resp.status_code != 200:
+                logger.error(
+                    "Groq API error %d: %s", resp.status_code, resp.text[:500]
+                )
             resp.raise_for_status()
 
         raw = resp.json()["choices"][0]["message"]["content"].strip()
