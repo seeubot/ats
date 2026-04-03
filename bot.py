@@ -259,6 +259,7 @@ def main():
         },
         fallbacks=[CommandHandler("cancel", cancel)],
         allow_reentry=True,
+        per_message=False,   # one conversation tracked per user, not per message
     )
 
     app.add_handler(CommandHandler("start", start))
